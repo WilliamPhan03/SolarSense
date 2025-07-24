@@ -1,52 +1,51 @@
-from sunpy.net import Fido, attrs as a
-from sunpy.timeseries import TimeSeries
+import requests
 import pandas as pd
-from datetime import datetime, timedelta, timezone
 import os
 
-SAVE = 'data/live/goes_recent_flux.csv'
+SAVE = "data/live/goes_recent_flux.csv"
+URL  = "https://services.swpc.noaa.gov/json/goes/primary/xrays-1-day.json"
 
-def fetch_last_24_hours(save_path=SAVE):
-    # Use timezone-aware UTC
-    # Known past dates with GOES XRS data
-
-    # set end first
-    end = datetime.now(timezone.utc)
-
-    # then subtract 48 hours
-    start = end - timedelta(hours=48)    
-    print(f"Fetching recent flux from {start} to {end}")
-
-    # Capitalize instrument name
-    results = Fido.search(a.Time(start, end), a.Instrument('XRS'))
-
-    if len(results) == 0:
-        print("⚠️ No GOES XRS data found in that time range.")
+def fetch_live_flux(save_path: str = SAVE) -> None:
+    print("Fetching live GOES XRS data from NOAA SWPC …")
+    r = requests.get(URL, timeout=15)
+    if r.status_code != 200:
+        print(f"⚠️  HTTP {r.status_code}: couldn’t fetch data.")
         return
 
-    files = Fido.fetch(results)
-    if not files:
-        print("⚠️ No files downloaded.")
+    data = r.json()
+    if not data:
+        print("⚠️  NOAA returned an empty payload.")
         return
 
-    ts = TimeSeries(files, concatenate=True)
-    df = ts.to_dataframe().reset_index()
+    df = pd.DataFrame(data)
 
-    df = df.rename(columns={
-        'index': 'timestamp',
-        'xrsa': 'long_flux',
-        'xrsb': 'short_flux'
-    })
+    # --- separate the two bands --------------------------------------------
+    short_df = df[df["energy"] == "0.05-0.4nm"][["time_tag", "flux"]].rename(
+        columns={"flux": "short_flux"}
+    )
+    long_df  = df[df["energy"] == "0.1-0.8nm"][["time_tag", "flux"]].rename(
+        columns={"flux": "long_flux"}
+    )
 
-    df['timestamp'] = pd.to_datetime(df['timestamp'])
-    df = df[['timestamp', 'long_flux', 'short_flux']]
-    df.set_index('timestamp', inplace=True)
-    # Use '1min' instead of '1T' to avoid future warnings
-    df = df.resample('1min').mean().dropna().reset_index()
+    # --- merge and format ---------------------------------------------------
+    merged = (
+        pd.merge(long_df, short_df, on="time_tag", how="inner")
+          .sort_values("time_tag")
+    )
 
+    # convert ISO strings → nice timestamp
+    merged["time_tag"] = (
+        pd.to_datetime(merged["time_tag"], utc=True)
+          .dt.strftime("%Y-%m-%d %H:%M:%S")
+    )
+
+    merged = merged.rename(columns={"time_tag": "timestamp"})
+    merged = merged[["timestamp", "long_flux", "short_flux"]]
+
+    # --- save ---------------------------------------------------------------
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    df.to_csv(save_path, index=False)
-    print(f"✅ Saved live flux data to {save_path}")
+    merged.to_csv(save_path, index=False)
+    print(f"✅  Saved → {save_path}  ({len(merged)} rows)")
 
 if __name__ == "__main__":
-    fetch_last_24_hours()
+    fetch_live_flux()
