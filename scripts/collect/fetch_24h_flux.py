@@ -2,19 +2,19 @@ import requests
 import pandas as pd
 import os
 
-SAVE = "data/live/goes_recent_flux.csv"
+SAVE = "data/processed/goes_24h_clean.csv"
 URL  = "https://services.swpc.noaa.gov/json/goes/primary/xrays-1-day.json"
 
 def fetch_live_flux(save_path: str = SAVE) -> None:
     print("Fetching live GOES XRS data from NOAA SWPC …")
     r = requests.get(URL, timeout=15)
     if r.status_code != 200:
-        print(f"⚠️  HTTP {r.status_code}: couldn’t fetch data.")
+        print(f"HTTP {r.status_code}: couldn’t fetch data.")
         return
 
     data = r.json()
     if not data:
-        print("⚠️  NOAA returned an empty payload.")
+        print("NOAA returned an empty payload.")
         return
 
     df = pd.DataFrame(data)
@@ -45,7 +45,7 @@ def fetch_live_flux(save_path: str = SAVE) -> None:
     # --- save ---------------------------------------------------------------
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     merged.to_csv(save_path, index=False)
-    print(f"✅  Saved → {save_path}  ({len(merged)} rows)")
+    print(f"Saved: {save_path}  ({len(merged)} rows)")
 
 if __name__ == "__main__":
     fetch_live_flux()

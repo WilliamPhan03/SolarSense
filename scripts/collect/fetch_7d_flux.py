@@ -13,19 +13,19 @@ import os
 from datetime import datetime
 
 URL_7DAY  = "https://services.swpc.noaa.gov/json/goes/primary/xrays-7-day.json"
-SAVE_PATH = "data/processed/goes_training_clean.csv"
+SAVE_PATH = "data/processed/goes_7day_clean.csv"
 
 def fetch_training_data(save_path: str = SAVE_PATH) -> None:
     print("Fetching 7-day GOES X-ray data from NOAA SWPC …")
 
     resp = requests.get(URL_7DAY, timeout=20)
     if resp.status_code != 200:
-        print(f"⚠️  HTTP {resp.status_code}: could not fetch data.")
+        print(f"HTTP {resp.status_code}: could not fetch data.")
         return
 
     raw = resp.json()
     if not raw:
-        print("⚠️  NOAA returned an empty payload.")
+        print("NOAA returned an empty payload.")
         return
 
     df = pd.DataFrame(raw)
@@ -56,7 +56,7 @@ def fetch_training_data(save_path: str = SAVE_PATH) -> None:
     # --- save ---------------------------------------------------------------
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     merged.to_csv(save_path, index=False)
-    print(f"✅  Saved → {save_path}  ({len(merged)} rows; "
+    print(f"Saved: {save_path}  ({len(merged)} rows; "
           f"first = {merged['timestamp'].iloc[0]}, "
           f"last = {merged['timestamp'].iloc[-1]})")
 
