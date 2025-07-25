@@ -1,0 +1,31 @@
+# Python noise
+__pycache__/
+*.py[cod]
+*.ipynb_checkpoints
+*.DS_Store
+
+# Editors / IDEs
+.vscode/
+.idea/
+
+# Envs
+.env
+.venv/
+.env.*/
+venv/
+*.swp
+
+# Model artifacts
+models/regressors/*.pkl
+
+# Big data – ignore everything in processed
+data/processed/*
+
+# …but keep tiny demo/sample files if you want
+!data/processed/README.md
+!data/processed/sample_small.csv
+
+# Logs / temp
+logs/
+*.log
+*.errors
