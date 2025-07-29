@@ -39,7 +39,7 @@ def load_clean(csv_path):
             .reset_index())
     return df
 
-def main(csv_path, out_csv):
+def main(csv_path, out_dir):
     df = load_clean(csv_path)
     if len(df) < WINDOW:
         raise RuntimeError(f"Need at least {WINDOW} minutes of data")
@@ -75,6 +75,12 @@ def main(csv_path, out_csv):
         "long_flux_pred": preds,
         "goes_class_pred": [flux_to_class(x) for x in preds]
     })
+
+    # make output name the date range of the forecast
+    start_date = idx[0].strftime("%Y_%m_%d")
+    end_date = idx[-1].strftime("%Y_%m_%d")
+    out_csv = Path(out_dir) / f"forecast_{start_date}-{end_date}.csv"
+
     Path(out_csv).parent.mkdir(parents=True, exist_ok=True)
     out.to_csv(out_csv, index=False)
     print(f"Saved forecast -> {out_csv}")
@@ -82,6 +88,6 @@ def main(csv_path, out_csv):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--csv", default="data/processed/goes_90d_clean.csv")
-    ap.add_argument("--out", default="data/processed/forecast_24h.csv")
+    ap.add_argument("--out_dir", default="data/processed")
     args = ap.parse_args()
-    main(args.csv, args.out)
+    main(args.csv, args.out_dir)

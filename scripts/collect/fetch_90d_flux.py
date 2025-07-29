@@ -21,9 +21,23 @@ MAX_CONN = 1  # sequential
 
 SWPC_7DAY_URL = "https://services.swpc.noaa.gov/json/goes/primary/xrays-7-day.json"
 
+CLASS_THRESH = [
+    (1e-4, "X"),
+    (1e-5, "M"),
+    (1e-6, "C"),
+    (1e-7, "B"),
+    (0.0,  "A"),
+]
+
 # ---------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------
+
+def flux_to_class(f):
+    for thr, label in CLASS_THRESH:
+        if f >= thr:
+            return label
+    return "A"
 
 def fetch_chunk(t0_iso: str, t1_iso: str) -> list[str]:
     """Fetch one [t0, t1) chunk with manual retries. Returns list of paths (can be empty)."""
@@ -85,6 +99,8 @@ def fetch_7day_swpc_json() -> pd.DataFrame:
     return out
 
 def finalize_and_save(df: pd.DataFrame, out_path: str):
+    # "goes_class" column
+    df["goes_class"] = df["long_flux"].apply(flux_to_class)
     df = df.sort_values("timestamp").drop_duplicates(subset="timestamp", keep="last")
     df["timestamp"] = df["timestamp"].dt.strftime("%Y-%m-%d %H:%M:%S")
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
