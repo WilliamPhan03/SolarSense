@@ -3,15 +3,46 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import joblib
-from sklearn.ensemble import HistGradientBoostingRegressor
+import torch
+import torch.nn as nn
+from torch.utils.data import TensorDataset, DataLoader
 from sklearn.preprocessing import StandardScaler
 
 MODEL_DIR = Path("models/regressors")
-XSC_PATH  = MODEL_DIR / "x_scaler_1step.pkl"
-YS_PATH   = MODEL_DIR / "y_scaler_1step.pkl"
-MODEL_PATH= MODEL_DIR / "flux_hgbr_1step.pkl"
+XSC_PATH  = MODEL_DIR / "x_scaler_60step.pkl"
+YS_PATH   = MODEL_DIR / "y_scaler_60step.pkl"
+MODEL_PATH= MODEL_DIR / "flux_lstm_60step.pth" # Changed model extension
 
-WINDOW = 720  # 12h history, tune as you wish
+# --- Model & Training Hyperparameters ---
+WINDOW = 720          # Input sequence length (12h of 1-min data)
+HORIZON = 60
+INPUT_FEATURES = 2    # Number of features per time step (long_flux, short_flux)
+HIDDEN_SIZE = 128      # Number of features in the LSTM hidden state
+NUM_LAYERS = 3        # Number of stacked LSTM layers
+OUTPUT_SIZE = HORIZON      # Number of output values to predict (just long_flux)
+EPOCHS = 25           # Number of full passes through the training data
+BATCH_SIZE = 64       # Number of samples to process in one batch
+LEARNING_RATE = 0.001 # Step size for the optimizer
+
+# --- PyTorch Model Definition ---
+class LSTMRegressor(nn.Module):
+    def __init__(self, input_size, hidden_size, num_layers, output_size):
+        super(LSTMRegressor, self).__init__()
+        # LSTM layer processes sequences of input data. batch_first=True means
+        # the input tensor shape is (batch, sequence_length, features).
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+        # A standard fully-connected layer to map the LSTM output to the desired output size.
+        self.linear = nn.Linear(hidden_size, output_size)
+
+    # forward pass
+    def forward(self, x):
+        # LSTM returns the output for each time step, plus the final hidden and cell states.
+        lstm_out, _ = self.lstm(x)
+        # We only care about the output of the very last time step in the sequence.
+        last_time_step_out = lstm_out[:, -1, :]
+        # Pass the last time step's output through the linear layer to get the final prediction.
+        out = self.linear(last_time_step_out)
+        return out
 
 def load_clean(csv_path):
     df = pd.read_csv(csv_path, parse_dates=["timestamp"]).sort_values("timestamp")
@@ -26,45 +57,91 @@ def load_clean(csv_path):
             .reset_index())
     return df
 
-def make_supervised_1step(df, window):
-    vals = df[["long_flux", "short_flux"]].to_numpy(dtype=float)
-    log_vals = np.log10(np.maximum(vals, 1e-12))
-    y = np.log10(np.maximum(df["long_flux"].shift(-1).to_numpy(dtype=float), 1e-12))
+def make_supervised_60step(df, window, horizon):
+    """Prepares data for multi-step LSTM. X shape: (samples, window, features), y shape: (samples, horizon)"""
+    X_vals = df[["long_flux", "short_flux"]].to_numpy(dtype=float)
+    y_vals = df["long_flux"].to_numpy(dtype=float)
+
+    log_X = np.log10(np.maximum(X_vals, 1e-12))
+    log_y = np.log10(np.maximum(y_vals, 1e-12))
 
     X_list, y_list = [], []
-    for i in range(window, len(df) - 1):
-        X_list.append(log_vals[i - window:i, :].reshape(-1))
-        y_list.append(y[i])
+    for i in range(window, len(df) - horizon):
+        X_list.append(log_X[i - window:i, :])
+        y_list.append(log_y[i:i + horizon])
     return np.asarray(X_list), np.asarray(y_list)
 
 def main(csv_path):
     df = load_clean(csv_path)
-    X, y = make_supervised_1step(df, WINDOW)
+    X, y = make_supervised_60step(df, WINDOW, HORIZON)
 
-    # scalers
+    # --- Scaling ---
+    # StandardScaler expects 2D input [samples, features]. Our input X is 3D
+    # [samples, timesteps, features]. We reshape to 2D, fit/transform, then reshape back.
     x_scaler = StandardScaler()
-    Xs = x_scaler.fit_transform(X)
+    X_shape = X.shape
+    Xs = x_scaler.fit_transform(X.reshape(-1, X_shape[-1])).reshape(X_shape)
 
-    y = y.reshape(-1, 1)
+    # y = y.reshape(-1, 1)
     y_scaler = StandardScaler()
-    ys = y_scaler.fit_transform(y).ravel()
+    ys = y_scaler.fit_transform(y)
 
-    model = HistGradientBoostingRegressor(
-        max_depth=6,
-        max_iter=500,
-        learning_rate=0.05,
-        random_state=42,
-    )
-    model.fit(Xs, ys)
+    # --- PyTorch DataLoader ---
+    # Convert numpy arrays to PyTorch tensors.
+    X_tensor = torch.from_numpy(Xs).float()
+    y_tensor = torch.from_numpy(ys).float()
+    # Create a tensor dataset and a loader to handle batching and shuffling.
+    dataset = TensorDataset(X_tensor, y_tensor)
+    loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
 
+    # --- Model, Loss, Optimizer ---
+    # NVIDIA GPU's
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    # Apple Silicon
+    elif torch.backends.mps.is_available():
+        device = torch.device("mps")
+    else:
+        device = torch.device("cpu")
+    print(f"Using device: {device}")
+    model = LSTMRegressor(INPUT_FEATURES, HIDDEN_SIZE, NUM_LAYERS, OUTPUT_SIZE).to(device)
+    # Use Mean Squared Error 
+    criterion = nn.MSELoss()
+    # Adam is an optimizer that adapts learning rates
+    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+
+    # --- Training Loop ---
+    print("Starting model training...")
+    model.train()
+    for epoch in range(EPOCHS):
+        epoch_loss = 0
+        # Iterate the data in batches.
+        for i, (X_batch, y_batch) in enumerate(loader):
+            # Move data for the current batch to the active device.
+            X_batch, y_batch = X_batch.to(device), y_batch.to(device)
+
+            # Forward pass: compute predicted y by passing x to the model.
+            outputs = model(X_batch)
+            loss = criterion(outputs, y_batch)
+
+            # Backward pass and optimize
+            optimizer.zero_grad() # Clear gradients from previous step.
+            loss.backward()       # Compute gradients of the loss w.r.t. model parameters.
+            optimizer.step()      # Update the model parameters.
+            epoch_loss += loss.item()
+
+        avg_loss = epoch_loss / len(loader)
+        print(f"Epoch [{epoch+1}/{EPOCHS}], Loss: {avg_loss:.6f}")
+
+    # --- Save Model and Scalers ---
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    joblib.dump(model, MODEL_PATH)
+    torch.save(model.state_dict(), MODEL_PATH)
     joblib.dump(x_scaler, XSC_PATH)
     joblib.dump(y_scaler, YS_PATH)
     print(f"Saved: {MODEL_PATH}, {XSC_PATH}, {YS_PATH}")
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--csv", default="data/processed/goes_90d_clean.csv")
+    ap.add_argument("--csv", default="data/processed/goes_7day_clean.csv") #temporary use of 7day data to speed up training for now
     args = ap.parse_args()
     main(args.csv)

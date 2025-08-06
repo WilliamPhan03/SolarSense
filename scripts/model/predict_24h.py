@@ -3,14 +3,22 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import joblib
+import torch
+import torch.nn as nn
 
 MODEL_DIR = Path("models/regressors")
-XSC_PATH  = MODEL_DIR / "x_scaler_1step.pkl"
-YS_PATH   = MODEL_DIR / "y_scaler_1step.pkl"
-MODEL_PATH= MODEL_DIR / "flux_hgbr_1step.pkl"
+XSC_PATH  = MODEL_DIR / "x_scaler_60step.pkl"
+YS_PATH   = MODEL_DIR / "y_scaler_60step.pkl"
+MODEL_PATH= MODEL_DIR / "flux_lstm_60step.pth" # Use PyTorch model
 
 WINDOW  = 720
 HORIZON = 1440
+
+# --- Model Hyperparameters (must match training) ---
+INPUT_FEATURES = 2
+HIDDEN_SIZE = 128
+NUM_LAYERS = 3
+OUTPUT_SIZE = 60
 
 CLASS_THRESH = [
     (1e-4, "X"),
@@ -19,6 +27,19 @@ CLASS_THRESH = [
     (1e-7, "B"),
     (0.0,  "A"),
 ]
+
+# --- PyTorch Model Definition (must match training script) ---
+class LSTMRegressor(nn.Module):
+    def __init__(self, input_size, hidden_size, num_layers, output_size):
+        super(LSTMRegressor, self).__init__()
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+        self.linear = nn.Linear(hidden_size, output_size)
+
+    def forward(self, x):
+        lstm_out, _ = self.lstm(x)
+        last_time_step_out = lstm_out[:, -1, :]
+        out = self.linear(last_time_step_out)
+        return out
 
 def flux_to_class(f):
     for thr, label in CLASS_THRESH:
@@ -44,7 +65,17 @@ def main(csv_path, out_dir):
     if len(df) < WINDOW:
         raise RuntimeError(f"Need at least {WINDOW} minutes of data")
 
-    model = joblib.load(MODEL_PATH)
+    # --- Load Model and Scalers ---
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    elif torch.backends.mps.is_available():
+        device = torch.device("mps")
+    else:
+        device = torch.device("cpu")
+    model = LSTMRegressor(INPUT_FEATURES, HIDDEN_SIZE, NUM_LAYERS, OUTPUT_SIZE).to(device)
+    model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
+    model.eval() # Set model to evaluation mode
+
     x_scaler = joblib.load(XSC_PATH)
     y_scaler = joblib.load(YS_PATH)
 
@@ -55,19 +86,36 @@ def main(csv_path, out_dir):
     preds = []
     ts_start = df["timestamp"].iloc[-1] + pd.Timedelta(minutes=1)
 
-    for _ in range(HORIZON):
-        X = buf_log.reshape(1, -1)
-        Xs = x_scaler.transform(X)
-        y_log_scaled = model.predict(Xs).reshape(-1, 1)
-        y_log = y_scaler.inverse_transform(y_log_scaled).ravel()[0]
-        y_lin = 10**y_log
+    with torch.no_grad(): # Disable gradient calculation for inference
+        # Loop 24 times to generate a 24-hour forecast (24 * 60 minutes = 1440)
+        for _ in range(HORIZON // OUTPUT_SIZE):
+            # Scale the entire window, which has shape (WINDOW, FEATURES)
+            X_scaled = x_scaler.transform(buf_log)
 
-        preds.append(y_lin)
+            # Reshape for LSTM: (batch, sequence, features) and convert to tensor
+            X_tensor = torch.from_numpy(X_scaled).float().unsqueeze(0).to(device)
 
-        # feed the prediction back (teacher forcing style)
-        next_row = np.array([[y_lin, buf_log[-1, 0]]])  # long_flux_pred, reuse last short (cheap approx)
-        # better: predict short flux too with a second 1-step model; or keep measured short flux
-        buf_log = np.vstack([buf_log[1:], np.log10(np.maximum(next_row, 1e-12))])
+            # Predict the next 60 minutes in one shot
+            y_log_scaled = model(X_tensor).cpu().numpy()
+            
+            # The y_scaler was fit on data of shape (samples, 60), so it expects that here.
+            y_log = y_scaler.inverse_transform(y_log_scaled).flatten()
+            y_lin = 10**y_log
+
+            preds.extend(y_lin)
+
+            # --- Update the buffer for the next hour's prediction ---
+            # We need to create 60 new rows for the buffer.
+            # We have the predicted long_flux, but need to generate short_flux.
+            # A simple strategy is to reuse the last known short_flux value.
+            last_short_flux = buf[-1, 1]
+            new_short_flux_log = np.full(OUTPUT_SIZE, np.log10(np.maximum(last_short_flux, 1e-12)))
+            
+            # Combine predicted long_flux and generated short_flux
+            new_rows_log = np.column_stack([y_log, new_short_flux_log])
+            
+            # Append the 60 new minutes and drop the 60 oldest minutes
+            buf_log = np.vstack([buf_log[OUTPUT_SIZE:], new_rows_log])
 
     idx = pd.date_range(start=ts_start, periods=HORIZON, freq="1min")
     out = pd.DataFrame({
@@ -87,7 +135,7 @@ def main(csv_path, out_dir):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--csv", default="data/processed/goes_90d_clean.csv")
+    ap.add_argument("--csv", default="data/processed/goes_7day_clean.csv")
     ap.add_argument("--out_dir", default="data/processed")
     args = ap.parse_args()
     main(args.csv, args.out_dir)
