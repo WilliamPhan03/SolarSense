@@ -29,3 +29,6 @@ data/processed/*
 logs/
 *.log
 *.errors
+
+# React dependencies
+**/node_modules/
