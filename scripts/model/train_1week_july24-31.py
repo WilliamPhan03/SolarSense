@@ -65,6 +65,6 @@ def main(csv_path):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--csv", default="data/processed/goes_7day_clean.csv")
+    ap.add_argument("--csv", default="data/processed/goes_july24-31_clean.csv")
     args = ap.parse_args()
     main(args.csv)

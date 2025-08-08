@@ -24,7 +24,7 @@ def plot_predictions(csv_path, output_path):
 if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))
     
-    csv_path = os.path.join(script_dir, "../data/processed/forecast_24h.csv")
+    csv_path = os.path.join(script_dir, "../data/processed/forecast_sklearn_2025_08_01-2025_08_01.csv")
     output_path = os.path.join(script_dir, "forecast_plot.png")
     
     plot_predictions(csv_path, output_path)
