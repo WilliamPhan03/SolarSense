@@ -39,7 +39,7 @@ const getForecast = async (isoDate) => {
   //   GET  http://localhost:8000/forecast/2025-08-07
   const r = await fetch(`http://localhost:8000/forecast/${isoDate}`);
   if (!r.ok) return null;                 // backend may still be training
-  return await r.json();                  // { hourly_pred:[{hour,flux,class},…] }
+  return await r.json();                  //  { hourly_pred:[{hour,flux,class},…] }
 };
 
 /* ---------- main ---------- */
