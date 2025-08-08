@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import TensorDataset, DataLoader
 from sklearn.preprocessing import StandardScaler
+from torch.optim.lr_scheduler import StepLR
 
 MODEL_DIR = Path("models/regressors")
 XSC_PATH  = MODEL_DIR / "x_scaler_60step.pkl"
@@ -14,35 +15,56 @@ YS_PATH   = MODEL_DIR / "y_scaler_60step.pkl"
 MODEL_PATH= MODEL_DIR / "flux_lstm_60step.pth" # Changed model extension
 
 # --- Model & Training Hyperparameters ---
-WINDOW = 720          # Input sequence length (12h of 1-min data)
+WINDOW = 1440          # Input sequence length (12h of 1-min data)
 HORIZON = 60
 INPUT_FEATURES = 2    # Number of features per time step (long_flux, short_flux)
-HIDDEN_SIZE = 128      # Number of features in the LSTM hidden state
-NUM_LAYERS = 3        # Number of stacked LSTM layers
+HIDDEN_SIZE = 256      # Increased model capacity
+NUM_LAYERS = 2        # Number of stacked LSTM layers
 OUTPUT_SIZE = HORIZON      # Number of output values to predict (just long_flux)
-EPOCHS = 25           # Number of full passes through the training data
-BATCH_SIZE = 64       # Number of samples to process in one batch
+EPOCHS = 50           # Number of full passes through the training data
+BATCH_SIZE = 128       # Number of samples to process in one batch
 LEARNING_RATE = 0.001 # Step size for the optimizer
+DROPOUT_RATE = 0.2    # Dropout rate for regularization
 
 # --- PyTorch Model Definition ---
 class LSTMRegressor(nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers, output_size):
+    def __init__(self, input_size, hidden_size, num_layers, output_size, dropout_rate):
         super(LSTMRegressor, self).__init__()
         # LSTM layer processes sequences of input data. batch_first=True means
         # the input tensor shape is (batch, sequence_length, features).
-        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout_rate if num_layers > 1 else 0)
         # A standard fully-connected layer to map the LSTM output to the desired output size.
-        self.linear = nn.Linear(hidden_size, output_size)
+        # The input to this layer is now the flattened output of the LSTM.
+        self.linear = nn.Linear(hidden_size * WINDOW, output_size)
+        self.relu = nn.ReLU()
 
     # forward pass
     def forward(self, x):
-        # LSTM returns the output for each time step, plus the final hidden and cell states.
-        lstm_out, _ = self.lstm(x)
-        # We only care about the output of the very last time step in the sequence.
-        last_time_step_out = lstm_out[:, -1, :]
-        # Pass the last time step's output through the linear layer to get the final prediction.
-        out = self.linear(last_time_step_out)
-        return out
+        # The LSTM returns its output and the final hidden and cell states.
+        # We now use the entire output sequence from the LSTM.
+        lstm_out, _ = self.lstm(x) # lstm_out shape: (batch, window, hidden_size)
+        
+        # Flatten the LSTM output to feed into the linear layer
+        # This allows the model to use information from all input time steps.
+        flattened_out = lstm_out.reshape(lstm_out.shape[0], -1)
+        
+        # Apply ReLU activation
+        activated_out = self.relu(flattened_out)
+        
+        # Pass the flattened output through the linear layer.
+        predictions = self.linear(activated_out)
+        return predictions
+
+def weighted_mse_loss(inputs, targets):
+    """
+    Calculates a weighted Mean Squared Error, giving more importance
+    to samples with higher target values using an exponential weight.
+    """
+    # Weights are exponential of the target values. Since targets are standardized,
+    # this gives much higher weight to values above the mean (flares).
+    weights = torch.exp(targets)
+    loss = torch.mean(weights * (inputs - targets) ** 2)
+    return loss
 
 def load_clean(csv_path):
     df = pd.read_csv(csv_path, parse_dates=["timestamp"]).sort_values("timestamp")
@@ -104,11 +126,11 @@ def main(csv_path):
     else:
         device = torch.device("cpu")
     print(f"Using device: {device}")
-    model = LSTMRegressor(INPUT_FEATURES, HIDDEN_SIZE, NUM_LAYERS, OUTPUT_SIZE).to(device)
-    # Use Mean Squared Error 
-    criterion = nn.MSELoss()
+    model = LSTMRegressor(INPUT_FEATURES, HIDDEN_SIZE, NUM_LAYERS, OUTPUT_SIZE, DROPOUT_RATE).to(device)
+    # We will use our custom weighted loss function
     # Adam is an optimizer that adapts learning rates
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    scheduler = StepLR(optimizer, step_size=15, gamma=0.5) # Gentler learning rate scheduler
 
     # --- Training Loop ---
     print("Starting model training...")
@@ -122,7 +144,7 @@ def main(csv_path):
 
             # Forward pass: compute predicted y by passing x to the model.
             outputs = model(X_batch)
-            loss = criterion(outputs, y_batch)
+            loss = weighted_mse_loss(outputs, y_batch)
 
             # Backward pass and optimize
             optimizer.zero_grad() # Clear gradients from previous step.
@@ -130,8 +152,9 @@ def main(csv_path):
             optimizer.step()      # Update the model parameters.
             epoch_loss += loss.item()
 
+        scheduler.step() # Update learning rate
         avg_loss = epoch_loss / len(loader)
-        print(f"Epoch [{epoch+1}/{EPOCHS}], Loss: {avg_loss:.6f}")
+        print(f"Epoch [{epoch+1}/{EPOCHS}], Loss: {avg_loss:.6f}, LR: {scheduler.get_last_lr()[0]}")
 
     # --- Save Model and Scalers ---
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
@@ -142,6 +165,6 @@ def main(csv_path):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--csv", default="data/processed/goes_7day_clean.csv") #temporary use of 7day data to speed up training for now
+    ap.add_argument("--csv", default="data/processed/new2weektraining.csv") # Reverted to 90-day data for robust training
     args = ap.parse_args()
     main(args.csv)

@@ -11,14 +11,15 @@ XSC_PATH  = MODEL_DIR / "x_scaler_60step.pkl"
 YS_PATH   = MODEL_DIR / "y_scaler_60step.pkl"
 MODEL_PATH= MODEL_DIR / "flux_lstm_60step.pth" # Use PyTorch model
 
-WINDOW  = 720
+WINDOW  = 1440
 HORIZON = 1440
 
 # --- Model Hyperparameters (must match training) ---
 INPUT_FEATURES = 2
-HIDDEN_SIZE = 128
-NUM_LAYERS = 3
+HIDDEN_SIZE = 256
+NUM_LAYERS = 2
 OUTPUT_SIZE = 60
+DROPOUT_RATE = 0.2 # Must match training
 
 CLASS_THRESH = [
     (1e-4, "X"),
@@ -30,15 +31,17 @@ CLASS_THRESH = [
 
 # --- PyTorch Model Definition (must match training script) ---
 class LSTMRegressor(nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers, output_size):
+    def __init__(self, input_size, hidden_size, num_layers, output_size, dropout_rate):
         super(LSTMRegressor, self).__init__()
-        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
-        self.linear = nn.Linear(hidden_size, output_size)
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout_rate if num_layers > 1 else 0)
+        self.linear = nn.Linear(hidden_size * WINDOW, output_size)
+        self.relu = nn.ReLU()
 
     def forward(self, x):
-        lstm_out, _ = self.lstm(x)
-        last_time_step_out = lstm_out[:, -1, :]
-        out = self.linear(last_time_step_out)
+        lstm_out, _ = self.lstm(x) # lstm_out shape: (batch, window, hidden_size)
+        flattened_out = lstm_out.reshape(lstm_out.shape[0], -1)
+        activated_out = self.relu(flattened_out)
+        out = self.linear(activated_out)
         return out
 
 def flux_to_class(f):
@@ -72,7 +75,7 @@ def main(csv_path, out_dir):
         device = torch.device("mps")
     else:
         device = torch.device("cpu")
-    model = LSTMRegressor(INPUT_FEATURES, HIDDEN_SIZE, NUM_LAYERS, OUTPUT_SIZE).to(device)
+    model = LSTMRegressor(INPUT_FEATURES, HIDDEN_SIZE, NUM_LAYERS, OUTPUT_SIZE, DROPOUT_RATE).to(device)
     model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
     model.eval() # Set model to evaluation mode
 
@@ -135,7 +138,9 @@ def main(csv_path, out_dir):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--csv", default="data/processed/goes_7day_clean.csv")
+    ap.add_argument("--csv", default="data/processed/seed_aug6.csv")
     ap.add_argument("--out_dir", default="data/processed")
+    args = ap.parse_args()
+    main(args.csv, args.out_dir)
     args = ap.parse_args()
     main(args.csv, args.out_dir)

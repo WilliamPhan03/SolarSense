@@ -10,8 +10,8 @@ def test_prediction_accuracy():
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     
     # File paths
-    forecast_file = os.path.join(project_root, 'data', 'processed', 'forecast_2025_07_29-2025_07_30.csv')
-    actual_file = os.path.join(project_root, 'data', 'processed', '1d_test.csv')
+    forecast_file = os.path.join(project_root, 'data', 'processed', 'forecast_2025_08_07-2025_08_07.csv')
+    actual_file = os.path.join(project_root, 'data', 'processed', 'august7_valid.csv')
 
     # Check if files exist
     if not os.path.exists(forecast_file):
