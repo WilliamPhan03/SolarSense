@@ -26,8 +26,8 @@ def plot_predictions(pytorch_csv_path, validation_csv_path, output_path):
 if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
-    pytorch_csv_path = os.path.join(script_dir, "../data/processed/forecast_2025_08_07-2025_08_07.csv")
-    validation_csv_path = os.path.join(script_dir, "../data/processed/goes_august7_clean.csv")
-    output_path = os.path.join(script_dir, "forecast_validation_plot.png")
+    pytorch_csv_path = os.path.join(script_dir, "../data/processed/forecast_2025_08_01-2025_08_01_pytorch2.csv")
+    validation_csv_path = os.path.join(script_dir, "../data/processed/goes_august1_clean.csv")
+    output_path = os.path.join(script_dir, "forecast_validation_plot2.png")
     
     plot_predictions(pytorch_csv_path, validation_csv_path, output_path)
