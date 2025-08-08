@@ -34,6 +34,14 @@ const makeDummy = () => {
   }));
 };
 
+/* --- API helper ----------------------------------------- */
+const getForecast = async (isoDate) => {
+  //   GET  http://localhost:8000/forecast/2025-08-07
+  const r = await fetch(`http://localhost:8000/forecast/${isoDate}`);
+  if (!r.ok) return null;                 // backend may still be training
+  return await r.json();                  // { hourly_pred:[{hour,flux,class},…] }
+};
+
 /* ---------- main ---------- */
 
 const App = () => {
@@ -42,8 +50,23 @@ const App = () => {
   const [dark, setDark]      = useState(true);          // start in dark-mode
   const [now, setNow]        = useState(new Date());    // live clock
 
-  /* refresh dummy data when the chosen day changes */
-  useEffect(() => setData(makeDummy()), [day]);
+  /* ask the backend every time the chosen day changes */
+  useEffect(() => {
+    (async () => {
+      const data = await getForecast(day);                // <- call FastAPI
+      if (data && data.hourly_pred?.length === 24) {
+        // convert backend JSON to the format the chart expects
+        const hours = data.hourly_pred.map(h => ({
+          time: `${(h.hour % 12 || 12)}${h.hour < 12 ? "AM" : "PM"}`,
+          level: `${h.class}-Class`,
+          classIndex: ["A","B","C","M","X"].indexOf(h.class)
+        }));
+        setData(hours);                                   // swap in real data
+      } else {
+        setData(makeDummy());                             // fallback
+      }
+    })();
+  }, [day]);
 
   /* tick the clock every 30 s */
   useEffect(() => {
