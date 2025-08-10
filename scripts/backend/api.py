@@ -8,6 +8,11 @@ from paths import DATA_DIR
 from data_fetch import fetch_day_minute
 from predict     import predict_day, WINDOW
 
+# The backend folder and all files within it are used to serve the API.
+# This API provides endpoints to fetch solar flare data and predictions.
+# It is only used for the frontend in react-tailwind-vanilla, and acts as a 
+
+
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"])
 

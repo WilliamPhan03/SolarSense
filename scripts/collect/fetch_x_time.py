@@ -25,15 +25,6 @@ CLASS_THRESH = [
     (0.0,  "A"),
 ]
 
-# This script fetches GOES XRS data and saves to a CSV file.
-# The data is for a specific date range, defined by START_TIME and END_TIME.
-
-# You can modify START_TIME and END_TIME to fetch data for different dates.
-# You can also change the SAVE_PATH to save the output CSV file to a different location 
-# with a different name depending on the date/timeframe being fetched.
-
-# Exact time window - change to the desired date range
-# This script fetches GOES XRS data for August 1, 2025 for example.
 START_TIME = datetime(2025, 8, 9, 0, 0, 0, tzinfo=timezone.utc)
 END_TIME   = datetime(2025, 8, 9, 23, 59, 0, tzinfo=timezone.utc)
 

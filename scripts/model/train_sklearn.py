@@ -11,11 +11,7 @@ XSC_PATH  = MODEL_DIR / "x_scaler_1step.pkl"
 YS_PATH   = MODEL_DIR / "y_scaler_1step.pkl"
 MODEL_PATH= MODEL_DIR / "flux_hgbr_1step.pkl"
 
-WINDOW = 720 
-
-# This script retrains the model using the last 2 weeks of data. 
-# Specific to the period of July 28-31, 2025.
-# Uses sklearn model version.
+WINDOW = 720  
 
 def load_clean(csv_path):
     df = pd.read_csv(csv_path, parse_dates=["timestamp"]).sort_values("timestamp")
@@ -69,6 +65,6 @@ def main(csv_path):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--csv", default="data/processed/goes_2weekjuly_clean.csv")
+    ap.add_argument("--csv", default="data/processed/training_data.csv")
     args = ap.parse_args()
     main(args.csv)

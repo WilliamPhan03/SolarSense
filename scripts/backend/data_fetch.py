@@ -6,7 +6,7 @@ THRESH = [(1e-4,"X"), (1e-5,"M"), (1e-6,"C"), (1e-7,"B"), (0,"A")]
 
 def flux_to_class(x):
     for thr, lab in THRESH:
-        if x >= thr:        # first hit wins
+        if x >= thr:       
             return lab
     return "A"
 

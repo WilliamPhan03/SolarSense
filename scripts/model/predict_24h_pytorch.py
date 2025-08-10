@@ -137,7 +137,7 @@ def main(csv_path, out_dir):
     # make output name the date range of the forecast
     start_date = idx[0].strftime("%Y_%m_%d")
     end_date = idx[-1].strftime("%Y_%m_%d")
-    out_csv = Path(out_dir) / f"forecast_{start_date}-{end_date}_pytorch.csv"
+    out_csv = Path(out_dir) / f"forecast_pytorch_{start_date}-{end_date}.csv"
 
     Path(out_csv).parent.mkdir(parents=True, exist_ok=True)
     out.to_csv(out_csv, index=False)
@@ -145,7 +145,7 @@ def main(csv_path, out_dir):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--csv", default="data/processed/goes_july31_clean.csv")
+    ap.add_argument("--csv", default="data/processed/prediction_seed.csv")
     ap.add_argument("--out_dir", default="data/processed")
     args = ap.parse_args()
     main(args.csv, args.out_dir)
