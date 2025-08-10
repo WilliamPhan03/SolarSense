@@ -15,13 +15,11 @@ __pycache__/
 venv/
 *.swp
 
-# Model artifacts
-models/regressors/*.pkl
 
 # Big data – ignore everything in processed
 data/processed/*
 
-# …but keep tiny demo/sample files if you want
+# …but keep tiny demo/sample files
 !data/processed/README.md
 !data/processed/sample_small.csv
 

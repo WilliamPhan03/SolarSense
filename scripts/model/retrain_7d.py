@@ -13,6 +13,8 @@ MODEL_PATH= MODEL_DIR / "flux_hgbr_1step.pkl"
 
 WINDOW = 720  # 12h
 
+# This script retrains the model using the last 7 days of data. Useful for periodic updates.
+
 def load_last_7d(csv_path):
     df = pd.read_csv(csv_path, parse_dates=["timestamp"]).sort_values("timestamp")
     df = df.set_index("timestamp").last("7D").asfreq("1min").interpolate("time").ffill().bfill().reset_index()

@@ -11,10 +11,17 @@ XSC_PATH  = MODEL_DIR / "x_scaler_60step.pkl"
 YS_PATH   = MODEL_DIR / "y_scaler_60step.pkl"
 MODEL_PATH= MODEL_DIR / "flux_lstm_60step.pth" # Use PyTorch model
 
+
+# This script predicts the next 24 hours of solar flux using pytorch trained model.
+# Change to different seed csv path if needed at bottom.
+# Seed is typically last day of the trained data. Eg. July 24-31 of training, seed is July 31.
+# Pytorch looks through entire window at once from seed - 24hrs, so we predict 60 minutes at a time.
+# Modify hyperparameters to match the training script.
+
 WINDOW  = 1440
 HORIZON = 1440
 
-# --- Model Hyperparameters (must match training) ---
+#  Model Hyperparameters (must match training) 
 INPUT_FEATURES = 2
 HIDDEN_SIZE = 256
 NUM_LAYERS = 2
@@ -130,7 +137,7 @@ def main(csv_path, out_dir):
     # make output name the date range of the forecast
     start_date = idx[0].strftime("%Y_%m_%d")
     end_date = idx[-1].strftime("%Y_%m_%d")
-    out_csv = Path(out_dir) / f"forecast_{start_date}-{end_date}_pytorch2.csv"
+    out_csv = Path(out_dir) / f"forecast_{start_date}-{end_date}_pytorch.csv"
 
     Path(out_csv).parent.mkdir(parents=True, exist_ok=True)
     out.to_csv(out_csv, index=False)

@@ -5,6 +5,14 @@ import os
 SAVE = "data/processed/goes_7day_clean.csv"
 URL  = "https://services.swpc.noaa.gov/json/goes/primary/xrays-7-day.json"
 
+# This script fetches GOES XRS data and saves to a CSV file.
+# The data is for the last 7 days, fetched from NOAA SWPC.
+# You can change the SAVE path to save the output CSV file to a different location
+# with a different name depending on the date/timeframe being fetched.
+
+# This only grabs the last 7 days of data from NOAA SWPC. In UTC time.
+# For greater than 7 days, use the fetch_90d_flux.py script or SunPy Fido option seen in fetch_x_time.py.
+
 def fetch_training_data(save_path: str = SAVE) -> None:
     print("Fetching 7-day GOES X-ray data from NOAA SWPC …")
 

@@ -14,6 +14,12 @@ XSC_PATH  = MODEL_DIR / "x_scaler_60step.pkl"
 YS_PATH   = MODEL_DIR / "y_scaler_60step.pkl"
 MODEL_PATH= MODEL_DIR / "flux_lstm_60step.pth" # Changed model extension
 
+# This script retrains the LSTM model using the last 90 days of data.
+# Uses PyTorch for training.
+# Currently set to use 60-step prediction (1 hour at a time).
+# Currently uses 2 weeks of data for training.
+
+
 # --- Model & Training Hyperparameters ---
 WINDOW = 1440          # Input sequence length (12h of 1-min data)
 HORIZON = 60
@@ -97,7 +103,7 @@ def main(csv_path):
     df = load_clean(csv_path)
     X, y = make_supervised_60step(df, WINDOW, HORIZON)
 
-    # --- Scaling ---
+    # Scaling 
     # StandardScaler expects 2D input [samples, features]. Our input X is 3D
     # [samples, timesteps, features]. We reshape to 2D, fit/transform, then reshape back.
     x_scaler = StandardScaler()
@@ -108,7 +114,7 @@ def main(csv_path):
     y_scaler = StandardScaler()
     ys = y_scaler.fit_transform(y)
 
-    # --- PyTorch DataLoader ---
+    # PyTorch DataLoader 
     # Convert numpy arrays to PyTorch tensors.
     X_tensor = torch.from_numpy(Xs).float()
     y_tensor = torch.from_numpy(ys).float()
@@ -127,7 +133,7 @@ def main(csv_path):
         device = torch.device("cpu")
     print(f"Using device: {device}")
     model = LSTMRegressor(INPUT_FEATURES, HIDDEN_SIZE, NUM_LAYERS, OUTPUT_SIZE, DROPOUT_RATE).to(device)
-    # We will use our custom weighted loss function
+    # use custom weighted loss function
     # Adam is an optimizer that adapts learning rates
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
     scheduler = StepLR(optimizer, step_size=15, gamma=0.5) # Gentler learning rate scheduler
@@ -165,6 +171,6 @@ def main(csv_path):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--csv", default="data/processed/new2weektraining.csv") # Reverted to 90-day data for robust training
+    ap.add_argument("--csv", default="data/processed/new2weektraining.csv") 
     args = ap.parse_args()
     main(args.csv)

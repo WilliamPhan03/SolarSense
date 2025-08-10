@@ -2,6 +2,13 @@ import pandas as pd
 from sklearn.metrics import accuracy_score
 import os
 
+# This script tests the accuracy of solar flare predictions by comparing predicted classes with actual classes.
+# It reads two CSV files: one with the predicted classes and another with the actual classes.
+# You can modify the file paths to point to your specific CSV files - forecast_file and actual_file.
+# In the case that process_prediction.py is run, it will compare hourly, not minute-level predictions.
+# And you must fetch actual data for the same date range to compare against but hourly only - 24 entries
+# But if process_prediction.py is not run, it will compare minute-level predictions.
+
 def test_prediction_accuracy():
     """
     Compares the predicted solar flare class with the actual class and calculates accuracy.

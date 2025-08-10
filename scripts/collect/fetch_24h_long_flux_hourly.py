@@ -20,6 +20,9 @@ def flux_to_class(f):
             return label
     return "A"
 
+# Fetches 1-day GOES X-ray data from NOAA SWPC and saves to a CSV file. Most recent data is used. UTC time.
+# Specifically for hourly data. No short flux data is included.
+# You can change the SAVE path to save the output CSV file to a different location
 
 def fetch_training_data(save_path: str = SAVE) -> None:
     print("Fetching hourly 1-day GOES X-ray data from NOAA SWPC …")

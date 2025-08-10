@@ -13,7 +13,6 @@ from parfive import Downloader
 
 OUT = "data/processed/goes_90d_clean.csv"
 
-# polite settings for the historical (SunPy) part
 MAX_ATTEMPTS = 5
 SLEEP_BETWEEN_ATTEMPTS = 30  # seconds
 CHUNK_DAYS = 7
@@ -29,9 +28,10 @@ CLASS_THRESH = [
     (0.0,  "A"),
 ]
 
-# ---------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------
+# This FETCH script will fetch data from the last 90 days
+# using SunPy/Fido for historical data for the first 83 days,
+# and merge it with the latest 7-day data from SWPC using their file fetching JSON API.
+
 
 def flux_to_class(f):
     for thr, label in CLASS_THRESH:
@@ -51,7 +51,7 @@ def fetch_chunk(t0_iso: str, t1_iso: str) -> list[str]:
             files = Fido.fetch(res, downloader=dl, progress=False)
             return list(files)
         except Exception as e:
-            print(f"  attempt {attempt}/{MAX_ATTEMPTS} failed for {t0_iso} → {t1_iso}: {e}")
+            print(f"  attempt {attempt}/{MAX_ATTEMPTS} failed for {t0_iso} -> {t1_iso}: {e}")
             if attempt < MAX_ATTEMPTS:
                 time.sleep(SLEEP_BETWEEN_ATTEMPTS)
     return []
@@ -73,7 +73,6 @@ def to_clean_df_from_timeseries(file_paths: list[str]) -> pd.DataFrame:
 
     df = pd.concat(dfs, axis=0, ignore_index=True)
     df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True).dt.floor("min")
-    # average overlapping minutes (e.g., multiple satellites)
     df = (
         df.groupby("timestamp", as_index=False)
           .mean(numeric_only=True)
@@ -99,7 +98,6 @@ def fetch_7day_swpc_json() -> pd.DataFrame:
     return out
 
 def finalize_and_save(df: pd.DataFrame, out_path: str):
-    # "goes_class" column
     df["goes_class"] = df["long_flux"].apply(flux_to_class)
     df = df.sort_values("timestamp").drop_duplicates(subset="timestamp", keep="last")
     df["timestamp"] = df["timestamp"].dt.strftime("%Y-%m-%d %H:%M:%S")
@@ -107,34 +105,31 @@ def finalize_and_save(df: pd.DataFrame, out_path: str):
     df.to_csv(out_path, index=False)
     print(f"Saved: {out_path} ({len(df)} rows; first={df['timestamp'].iloc[0]}, last={df['timestamp'].iloc[-1]})")
 
-# ---------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------
 
 def main(out_path: str):
     now = Time.now()
     start_90 = now - timedelta(days=90)
     split_recent = now - timedelta(days=7)
 
-    print(f"Historical (SunPy/Fido): {start_90.iso} → {split_recent.iso}")
-    print(f"Recent (SWPC JSON):      {split_recent.iso} → {now.iso}")
+    print(f"Historical (SunPy/Fido): {start_90.iso} -> {split_recent.iso}")
+    print(f"Recent (SWPC JSON):      {split_recent.iso} -> {now.iso}")
 
-    # ---- 1) Historical 83 days via SunPy ----
+    #  1) Historical 83 days via SunPy 
     hist_files = []
     t0 = start_90
     while t0 < split_recent:
         t1 = min(t0 + timedelta(days=CHUNK_DAYS), split_recent)
-        print(f"  chunk: {t0.iso} → {t1.iso}")
+        print(f"  chunk: {t0.iso} -> {t1.iso}")
         files = fetch_chunk(t0.iso, t1.iso)
         hist_files.extend(files)
         t0 = t1
 
     df_hist = to_clean_df_from_timeseries(hist_files)
 
-    # ---- 2) Recent 7 days via SWPC JSON ----
+    #  2) Recent 7 days via SWPC JSON 
     df_recent = fetch_7day_swpc_json()
 
-    # ---- 3) Concat and keep the most recent values on overlap ----
+    #  3) Concat and keep the most recent values on overlap 
     if not df_hist.empty:
         df = pd.concat([df_hist, df_recent], axis=0, ignore_index=True)
     else:

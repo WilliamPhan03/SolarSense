@@ -3,15 +3,16 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import os
 
+# This script plots the predicted solar flux from a CSV file.
+# You can modify the file paths to point to your specific CSV file and output image path.
+
 def plot_predictions(csv_path, output_path):
     df = pd.read_csv(csv_path, parse_dates=["timestamp"])
     
     fig, ax1 = plt.subplots(figsize=(12, 6))
     
-    # Plot long_flux_pred
     ax1.plot(df["timestamp"], df["long_flux_pred"], color="orange", label="Predicted Long Flux")
     ax1.set_yscale("log")
-    # ax1.set_ylim(1e-7, 1e-5)  # Set y-axis range from 10^-7 to 10^-4
     ax1.set_ylabel("Watts · m⁻²")
     ax1.set_xlabel("Universal Time")
     ax1.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M\n%b %d"))

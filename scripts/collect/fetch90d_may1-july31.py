@@ -29,9 +29,6 @@ CLASS_THRESH = [
 START_TIME = datetime(2025, 5, 1, 0, 0, 0, tzinfo=timezone.utc)
 END_TIME   = datetime(2025, 7, 31, 23, 59, 0, tzinfo=timezone.utc)
 
-# ---------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------
 
 def flux_to_class(f):
     for thr, label in CLASS_THRESH:
@@ -98,9 +95,6 @@ def finalize(df: pd.DataFrame, out_path: str):
     print(f"Saved: {out_path} ({len(df)} rows)")
     print(f"First = {df['timestamp'].iloc[0]}, Last = {df['timestamp'].iloc[-1]}")
 
-# ---------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------
 
 def main():
     print(f"Fetching GOES XRS data from: {START_TIME} → {END_TIME}")

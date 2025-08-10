@@ -11,7 +11,11 @@ XSC_PATH  = MODEL_DIR / "x_scaler_1step.pkl"
 YS_PATH   = MODEL_DIR / "y_scaler_1step.pkl"
 MODEL_PATH= MODEL_DIR / "flux_hgbr_1step.pkl"
 
-WINDOW = 720  # 12h history, tune as you wish
+WINDOW = 720 
+
+# This script retrains the model using the last 2 weeks of data. 
+# Specific to the period of July 28-31, 2025.
+# Uses sklearn model version.
 
 def load_clean(csv_path):
     df = pd.read_csv(csv_path, parse_dates=["timestamp"]).sort_values("timestamp")

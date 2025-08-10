@@ -29,9 +29,6 @@ CLASS_THRESH = [
 START_TIME = datetime(2025, 7, 31, 0, 0, 0, tzinfo=timezone.utc)
 END_TIME   = datetime(2025, 7, 31, 23, 59, 0, tzinfo=timezone.utc)
 
-# ---------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------
 
 def flux_to_class(f):
     for thr, label in CLASS_THRESH:
@@ -40,7 +37,7 @@ def flux_to_class(f):
     return "A"
 
 def fetch_with_retries(start_dt, end_dt) -> list[str]:
-    print(f"Searching SunPy: {start_dt} → {end_dt}")
+    print(f"Searching SunPy: {start_dt} -> {end_dt}")
     res = Fido.search(a.Time(start_dt, end_dt), a.Instrument("XRS"))
 
     if len(res) == 0:
@@ -98,9 +95,6 @@ def finalize(df: pd.DataFrame, out_path: str):
     print(f"Saved: {out_path} ({len(df)} rows)")
     print(f"First = {df['timestamp'].iloc[0]}, Last = {df['timestamp'].iloc[-1]}")
 
-# ---------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------
 
 def main():
     print(f"Fetching GOES XRS data from: {START_TIME} → {END_TIME}")

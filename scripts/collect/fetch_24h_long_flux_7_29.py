@@ -25,13 +25,16 @@ CLASS_THRESH = [
     (0.0,  "A"),
 ]
 
+# This script fetches GOES XRS data and saves to a CSV file.
+# The data is for a specific date range, defined by START_TIME and END_TIME.
+# You can modify START_TIME and END_TIME to fetch data for different dates.
+# this file is specifically for 1-day data, minute-by-minute.
+
 # Exact time window
 START_TIME = datetime(2025, 7, 29, 4, 6, 0, tzinfo=timezone.utc)
 END_TIME   = datetime(2025, 7, 30, 4, 5, 0, tzinfo=timezone.utc)
 
-# ---------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------
+
 
 def flux_to_class(f):
     for thr, label in CLASS_THRESH:
@@ -98,12 +101,9 @@ def finalize(df: pd.DataFrame, out_path: str):
     print(f"Saved: {out_path} ({len(df)} rows)")
     print(f"First = {df['timestamp'].iloc[0]}, Last = {df['timestamp'].iloc[-1]}")
 
-# ---------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------
 
 def main():
-    print(f"Fetching GOES XRS data from: {START_TIME} → {END_TIME}")
+    print(f"Fetching GOES XRS data from: {START_TIME} -> {END_TIME}")
     files = fetch_with_retries(START_TIME, END_TIME)
 
     if not files:

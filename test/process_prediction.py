@@ -16,6 +16,9 @@ def flux_to_class(f):
             return label
     return "A"
 
+# Processes minute-level predictions from a CSV file and aggregates them into hourly predictions.
+# This is done for verification purposes to compare 24 entries instead of 1440.
+
 def process_forecast_hourly(input_file_path, output_file_path):
     if not os.path.exists(input_file_path):
         print(f"Error: Input file not found at {input_file_path}")
