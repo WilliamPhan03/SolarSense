@@ -9,7 +9,7 @@ It supports two model families (scikit-learn Gradient Boosting and a PyTorch LST
 # Pipeline: 
         -> fetch.py (run 3 times for data on training, seed, and verify actual)
         -> train_(pytorch/sklearn).py 
-        -> predict_24h_(pytorch/sklearn).py 
+        -> predict_(pytorch/sklearn).py 
         -> OPTIONAL: process_prediction.py
         -> test_prediction.py
         -> graph_(prediction/pytorch/sklearn).py
@@ -112,8 +112,8 @@ SolarSense:.
 │   │       fetch.py
 │   │
 │   └───model
-│           predict_24h_pytorch.py
-│           predict_24h_sklearn.py
+│           predict_pytorch.py
+│           predict_sklearn.py
 │           train_pytorch.py
 │           train_sklearn.py
 │
@@ -150,7 +150,7 @@ According to the pipeline shown above, the entire process can be run as follows:
 2.         -> train_(pytorch/sklearn).py 
               -> sklearn is basic version that uses HistGradientBoostingRegressor with a 720 (12 hour window)
               -> pytorch is a more advanced version that uses LSTM with a 1440 (24 hour window)
-3.         -> predict_24h_(pytorch/sklearn).py 
+3.         -> predict_(pytorch/sklearn).py 
               -> both versions take in the prediction_seed.csv and predict
               -> To change how long to predict, the HORIZON value can be changed.
 4.         -> OPTIONAL: process_prediction.py
