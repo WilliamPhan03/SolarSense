@@ -10,7 +10,7 @@ YS_PATH   = MODEL_DIR / "y_scaler_1step.pkl"
 MODEL_PATH= MODEL_DIR / "flux_hgbr_1step.pkl"
 
 
-# This script predicts the next 24 hours of solar flux using sklearn trained model.
+# This script predicts the next x hours of solar flux using sklearn trained model.
 # Change to different seed csv path if needed at bottom.
 # Seed is typically last day of the trained data. Eg. July 24-31 of training, seed is July 31.
 # Sklearn looks through half of seed at once - 12hrs.

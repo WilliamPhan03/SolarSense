@@ -12,19 +12,19 @@ YS_PATH   = MODEL_DIR / "y_scaler_60step.pkl"
 MODEL_PATH= MODEL_DIR / "flux_lstm_60step.pth" # Use PyTorch model
 
 
-# This script predicts the next 24 hours of solar flux using pytorch trained model.
+# This script predicts the next x hours of solar flux using pytorch trained model.
 # Change to different seed csv path if needed at bottom.
 # Seed is typically last day of the trained data. Eg. July 24-31 of training, seed is July 31.
 # Pytorch looks through entire window at once from seed - 24hrs, so we predict 60 minutes at a time.
 # Modify hyperparameters to match the training script.
-# The model predicts 24 hours after seed date, so be sure to have actual data to compare against.
+# The model predicts x hours after seed date, so be sure to have actual data to compare against.
 # Currently set to use 60-step prediction (1 hour at a time).
 # Attempts to predict 60 minutes at a time, using previous 24 hours (1440 minutes) of data.
 
-# You can change HORIZON to predict greater than 24 hours.
+# You can change HORIZON to predict greater or less than 24 hours.
 
 WINDOW  = 1440
-HORIZON = 180
+HORIZON = 1440
 
 #  Model Hyperparameters (must match training) 
 INPUT_FEATURES = 2
