@@ -17,9 +17,14 @@ MODEL_PATH= MODEL_DIR / "flux_lstm_60step.pth" # Use PyTorch model
 # Seed is typically last day of the trained data. Eg. July 24-31 of training, seed is July 31.
 # Pytorch looks through entire window at once from seed - 24hrs, so we predict 60 minutes at a time.
 # Modify hyperparameters to match the training script.
+# The model predicts 24 hours after seed date, so be sure to have actual data to compare against.
+# Currently set to use 60-step prediction (1 hour at a time).
+# Attempts to predict 60 minutes at a time, using previous 24 hours (1440 minutes) of data.
+
+# You can change HORIZON to predict greater than 24 hours.
 
 WINDOW  = 1440
-HORIZON = 1440
+HORIZON = 180
 
 #  Model Hyperparameters (must match training) 
 INPUT_FEATURES = 2

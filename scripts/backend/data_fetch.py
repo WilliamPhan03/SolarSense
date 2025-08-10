@@ -1,6 +1,10 @@
 # scripts/backend/data_fetch.py
 import requests, pandas as pd, datetime as dt
 
+# this file is a stripped down version of the original fetch.py
+# be sure to look at that for more details on how to fetch data
+# this is specifically made for the FastAPI for the simpler frontend.
+
 URL = "https://services.swpc.noaa.gov/json/goes/primary/xrays-7-day.json"
 THRESH = [(1e-4,"X"), (1e-5,"M"), (1e-6,"C"), (1e-7,"B"), (0,"A")]
 

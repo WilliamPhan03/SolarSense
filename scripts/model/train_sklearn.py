@@ -11,6 +11,19 @@ XSC_PATH  = MODEL_DIR / "x_scaler_1step.pkl"
 YS_PATH   = MODEL_DIR / "y_scaler_1step.pkl"
 MODEL_PATH= MODEL_DIR / "flux_hgbr_1step.pkl"
 
+# This script trains the sklearn model using the last x days of data.
+# Uses sklearn for training.
+# Currently set to use 1-step prediction (1 minute at a time).
+# Currently uses all available data for training.
+# be sure to change training csv path at bottom if needed.
+
+# HistGradientBoostingRegressor(
+#    max_depth=6,      # Limits each tree to 6 levels to control complexity and overfitting
+#    max_iter=500,     # Builds up to 500 boosting trees
+#    learning_rate=0.05, # Shrinks each tree’s contribution for slower, more accurate learning
+#    random_state=42   # Fixes randomization so results are reproducible
+# )
+
 WINDOW = 720  
 
 def load_clean(csv_path):

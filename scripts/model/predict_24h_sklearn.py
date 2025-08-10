@@ -14,6 +14,11 @@ MODEL_PATH= MODEL_DIR / "flux_hgbr_1step.pkl"
 # Change to different seed csv path if needed at bottom.
 # Seed is typically last day of the trained data. Eg. July 24-31 of training, seed is July 31.
 # Sklearn looks through half of seed at once - 12hrs.
+# The model predicts 24 hours after seed date, so be sure to have actual data to compare against.
+# Currently set to use 1-step prediction (1 minute).
+# Attempts to predict 1 minute at a time, using previous 12 hours (720 minutes) of data.
+
+# You can change HORIZON to predict greater than 24 hours.
 
 WINDOW  = 720
 HORIZON = 1440

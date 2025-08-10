@@ -24,15 +24,19 @@ from sunpy.timeseries import TimeSeries
 # and NOAA SWPC has the last 7 days of data, but not historical data.
 
 # Save path - change to your desired output file
-SAVE_PATH = "data/processed/prediction_seed.csv"
+SAVE_PATH = "data/processed/actual.csv"
 
 # Adjust these for any desired interval (UTC)
 # If you want training data, set start time and end time to something large like greater than 7 days.
 # If you want a seed (used later for prediction), just fetch a single day. 
-# Be sure to rename the above SAVE_PATH depending on training or seed.
-# For example, training data could be "data/processed/training_data.csv" and seed data could be "data/processed/prediction_seed.csv".
-START_TIME = datetime(2025, 8, 9, 0, 0, 0, tzinfo=timezone.utc)
-END_TIME   = datetime(2025, 8, 9, 23, 59, 0, tzinfo=timezone.utc)
+# If you want actual data, set to the actual date you want to compare against. (1 day after seed date).
+# Be sure to rename the above SAVE_PATH depending on training or seed or actual.
+# For example, training data could be "data/processed/training_data.csv" 
+# and seed data could be "data/processed/prediction_seed.csv".
+# and actual data could be "data/processed/actual.csv".
+
+START_TIME = datetime(2025, 8, 2, 3, 0, 0, tzinfo=timezone.utc)
+END_TIME   = datetime(2025, 8, 2, 5, 59, 0, tzinfo=timezone.utc)
 
 SWPC_7DAY_URL = "https://services.swpc.noaa.gov/json/goes/primary/xrays-7-day.json"
 

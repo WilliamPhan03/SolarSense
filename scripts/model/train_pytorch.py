@@ -18,6 +18,7 @@ MODEL_PATH= MODEL_DIR / "flux_lstm_60step.pth" # Changed model extension
 # Uses PyTorch for training.
 # Currently set to use 60-step prediction (1 hour at a time).
 # Currently uses 2 weeks of data for training.
+# be sure to change training csv path at bottom if needed.
 
 
 # --- Model & Training Hyperparameters ---

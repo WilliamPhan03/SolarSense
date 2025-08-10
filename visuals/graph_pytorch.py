@@ -6,7 +6,7 @@ import matplotlib.dates as mdates
 # This script plots the predicted solar flux from a CSV file.
 # Specifically for PyTorch model predictions and actual.
 # You can modify the file paths to point to your specific CSV files and output image path.
-# Make sure actual and pytoch predictons are for the same date range.
+# Make sure actual and pytorch predictons are for the same date range.
 
 
 def plot_predictions(pytorch_csv_path, validation_csv_path, output_path):
@@ -31,8 +31,8 @@ def plot_predictions(pytorch_csv_path, validation_csv_path, output_path):
 if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
-    pytorch_csv_path = os.path.join(script_dir, "../data/processed/forecast_2025_08_01-2025_08_01_pytorch2.csv")
-    validation_csv_path = os.path.join(script_dir, "../data/processed/goes_august1_clean.csv")
-    output_path = os.path.join(script_dir, "forecast_validation_plot2.png")
+    pytorch_csv_path = os.path.join(script_dir, "../data/processed/forecast_pytorch_2025_08_02-2025_08_02.csv")
+    validation_csv_path = os.path.join(script_dir, "../data/processed/actual.csv")
+    output_path = os.path.join(script_dir, "forecast_validation_pytorch.png")
     
     plot_predictions(pytorch_csv_path, validation_csv_path, output_path)

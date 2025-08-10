@@ -18,6 +18,7 @@ def flux_to_class(f):
 
 # Processes minute-level predictions from a CSV file and aggregates them into hourly predictions.
 # This is done for verification purposes to compare 24 entries instead of 1440.
+# THIS FILE IS OPTIONAL, and only used for smaller predictions.
 
 def process_forecast_hourly(input_file_path, output_file_path):
     if not os.path.exists(input_file_path):
@@ -51,7 +52,7 @@ def process_forecast_hourly(input_file_path, output_file_path):
 if __name__ == '__main__':
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     
-    input_filename = 'forecast_2025_07_29-2025_07_30.csv'
+    input_filename = 'forecast_2025_08_02-2025_08_02.csv'
     output_filename = f"processed_{input_filename}"
     input_path = os.path.join(project_root, 'data', 'processed', input_filename)
     output_path = os.path.join(project_root, 'data', 'processed', output_filename)

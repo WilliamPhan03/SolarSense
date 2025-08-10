@@ -10,6 +10,19 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+/**
+ * Solar Sense - Solar Flare Prediction Dashboard
+ * This is the only frontend file, which fetches data from the backend
+ * and displays it in a responsive chart and hourly strip.
+ * The chart shows the predicted solar flare classes for each hour of the day.
+ * The hourly strip shows the time and class for each hour.
+ * The app starts in dark mode, but can be toggled to light mode.
+ * The app also shows the current time and date.
+ * 
+ * The app frontend currently does sklearn pipeline not pytorch pipeline.
+ * A C
+ */
+
 /* ---------- helpers ---------- */
 
 const todayUTC = () => new Date().toISOString().slice(0, 10);
@@ -34,9 +47,8 @@ const makeDummy = () => {
   }));
 };
 
-/* --- API helper ----------------------------------------- */
+
 const getForecast = async (isoDate) => {
-  //   GET  http://localhost:8000/forecast/2025-08-07
   const r = await fetch(`http://localhost:8000/forecast/${isoDate}`);
   if (!r.ok) return null;                 // backend may still be training
   return await r.json();                  //  { hourly_pred:[{hour,flux,class},…] }
@@ -53,7 +65,7 @@ const App = () => {
   /* ask the backend every time the chosen day changes */
   useEffect(() => {
     (async () => {
-      const data = await getForecast(day);                // <- call FastAPI
+      const data = await getForecast(day);                // call FastAPI
       if (data && data.hourly_pred?.length === 24) {
         // convert backend JSON to the format the chart expects
         const hours = data.hourly_pred.map(h => ({

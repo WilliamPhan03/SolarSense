@@ -3,6 +3,10 @@ import joblib, numpy as np, pandas as pd, datetime as dt, os
 from pathlib import Path
 from paths import MODELS_DIR
 
+# This script predicts the next 24 hours of solar flux using sklearn trained model.
+# NOTE: This is a stripped down version of the original predict_24h_sklearn.py.
+# The frontend only runs the sklearn pipeline, so this is used for the FastAPI.
+
 MODEL_PATH = MODELS_DIR / "flux_hgbr_1step.pkl"
 XS_PATH    = MODELS_DIR / "x_scaler_1step.pkl"
 YS_PATH    = MODELS_DIR / "y_scaler_1step.pkl"
