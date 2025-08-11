@@ -12,7 +12,7 @@ YS_PATH   = MODEL_DIR / "y_scaler_60step.pkl"
 MODEL_PATH= MODEL_DIR / "flux_lstm_60step.pth" # Use PyTorch model
 
 WINDOW  = 1440
-HORIZON = 1440
+HORIZON = 60
 
 # --- Model Hyperparameters (must match training) ---
 INPUT_FEATURES = 2
