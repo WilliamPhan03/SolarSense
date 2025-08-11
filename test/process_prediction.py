@@ -52,7 +52,7 @@ def process_forecast_hourly(input_file_path, output_file_path):
 if __name__ == '__main__':
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     
-    input_filename = 'forecast_2025_08_02-2025_08_02.csv'
+    input_filename = 'forecast_sklearn_2025_08_02-2025_08_02.csv' # chnage to pytorch or sklearn as needed
     output_filename = f"processed_{input_filename}"
     input_path = os.path.join(project_root, 'data', 'processed', input_filename)
     output_path = os.path.join(project_root, 'data', 'processed', output_filename)

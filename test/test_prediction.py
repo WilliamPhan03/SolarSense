@@ -16,7 +16,7 @@ def test_prediction_accuracy():
     # Assuming the script is run from the root of the SolarSense project
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     
-    # File paths
+    # File paths - change forecast file to sklearn or pytorch as needed
     forecast_file = os.path.join(project_root, 'data', 'processed', 'forecast_pytorch_2025_08_02-2025_08_02.csv')
     actual_file = os.path.join(project_root, 'data', 'processed', 'actual.csv')
 
