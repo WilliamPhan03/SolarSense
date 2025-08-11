@@ -49,6 +49,9 @@ Be sure to download sunpy on your operating system of choice, and setup any addi
 Setup steps can be found here for Sunpy:
 https://docs.sunpy.org/en/stable/tutorial/index.html 
 
+You can enter the sunpy venv using the following once you have set up your environment:
+```conda activate sunpy     ```
+
 ---
 
 # Directory Structure 
