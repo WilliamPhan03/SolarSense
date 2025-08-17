@@ -296,7 +296,7 @@ const App = () => {
       </section>
 
       <footer className={`text-center text-xs ${textSub}`}>
-        Updated {now.toLocaleTimeString()} · Dynamic Simulated Data
+        Updated {now.toLocaleTimeString()} · UTC Timezone
       </footer>
     </div>
   );
