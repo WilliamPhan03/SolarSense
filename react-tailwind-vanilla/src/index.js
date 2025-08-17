@@ -191,7 +191,7 @@ const App = () => {
 
         <div className="text-center">
           <p className={`text-lg font-semibold ${textSub}`}>{longDate(day)}</p>
-          <p className={`text-sm mb-1 ${textSub}`}>{currentTime}</p>
+          <p className={`text-sm mb-1 ${textSub}`}>{currentTime} UTC</p>
           <p className="text-3xl font-bold">{flareData[0].level}</p>
         </div>
 
