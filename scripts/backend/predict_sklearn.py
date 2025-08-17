@@ -1,7 +1,7 @@
 # scripts/backend/predict.py
 import joblib, numpy as np, pandas as pd, datetime as dt, os
 from pathlib import Path
-from paths import MODELS_DIR
+from scripts.backend.paths_sklearn import MODELS_DIR
 
 # This script predicts the next 24 hours of solar flux using sklearn trained model.
 # NOTE: This is a stripped down version of the original predict_24h_sklearn.py.

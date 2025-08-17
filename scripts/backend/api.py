@@ -1,58 +1,74 @@
 # scripts/backend/api.py
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import pandas as pd
-from paths import DATA_DIR  
 
-from data_fetch import fetch_day_minute
-from predict     import predict_day, WINDOW
-
-# The backend folder and all files within it are used to serve the API.
-# This API provides endpoints to fetch solar flare data and predictions.
-# It is only used for the frontend in react-tailwind-vanilla, and acts as a 
-
+from collect.fetch import fetch_range_minute, fetch_day_minute  # <= see step 2
+from model.predict_pytorch import predict_from_seed_df, WINDOW  # or sklearn if you're using that
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"])
 
-def avg_hourly(df: pd.DataFrame, flux_col: str, class_col: str):
-    hourly = df.set_index("timestamp")[flux_col]\
-               .resample("1H").mean().reset_index()
-    hourly["hour"] = hourly.timestamp.dt.hour
-    hourly["class"] = hourly[flux_col].apply(lambda x: "X" if x>=1e-4
-                                             else "M" if x>=1e-5
-                                             else "C" if x>=1e-6
-                                             else "B" if x>=1e-7
-                                             else "A")
-    return hourly[["hour", flux_col, "class"]]
+def _utc_day_window(date_iso: str):
+    """Return UTC start/end for a YYYY-MM-DD."""
+    try:
+        day_start = datetime.strptime(date_iso, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    except ValueError:
+        raise HTTPException(400, detail="Date must be YYYY-MM-DD")
+    day_end = day_start + timedelta(days=1) - timedelta(minutes=1)
+    return day_start, day_end
+
+def _avg_hourly(df: pd.DataFrame, flux_col: str, class_col: str):
+    out = (
+        df.set_index("timestamp")[flux_col]
+          .resample("1h")         # lower-case 'h' (pandas deprecation-proof)
+          .mean()
+          .reset_index()
+    )
+    out["hour"] = out.timestamp.dt.hour
+    out["class"] = out[flux_col].apply(
+        lambda x: "X" if x>=1e-4 else
+                  "M" if x>=1e-5 else
+                  "C" if x>=1e-6 else
+                  "B" if x>=1e-7 else "A"
+    )
+    return out[["hour", flux_col, "class"]]
 
 @app.get("/forecast/{date_iso}")
 def forecast(date_iso: str):
-    """Return hourly actual & sklearn-predicted flux for given UTC date."""
-    try:
-        datetime.strptime(date_iso, "%Y-%m-%d")
-    except ValueError:
-        raise HTTPException(400, detail="Date must be YYYY-MM-DD")
+    # 00:00–23:59 UTC of the requested day
+    day_start, day_end = _utc_day_window(date_iso)
 
-    # 1) fetch minute data for *previous* day for seeding
-    prev_day = (datetime.strptime(date_iso,"%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
-    seed_df  = fetch_day_minute(prev_day)
+    # Seed = previous UTC day, exactly WINDOW minutes (24h) if your model expects that
+    seed_start = day_start - timedelta(minutes=WINDOW)
+    seed_end   = day_start - timedelta(minutes=1)
+
+    seed_df   = fetch_range_minute(seed_start, seed_end)     # minute cadence, tz-aware UTC
     if len(seed_df) < WINDOW:
-        raise HTTPException(500, detail="Not enough seed data")
+        raise HTTPException(500, detail="Not enough seed data for prediction window")
 
-    # 2) fetch actual minutes for the requested day
-    actual_df = fetch_day_minute(date_iso)
+    actual_df = fetch_range_minute(day_start, day_end)       # minute cadence, tz-aware UTC
+    pred_df   = predict_from_seed_df(seed_df)                # minute cadence
 
-    # 3) run prediction
-    pred_df   = predict_day(date_iso, seed_df)
+    # Make absolutely sure we only return the requested UTC day
+    pred_df  = pred_df[(pred_df["timestamp"] >= day_start) & (pred_df["timestamp"] <= day_end)]
+    actual_df= actual_df[(actual_df["timestamp"] >= day_start) & (actual_df["timestamp"] <= day_end)]
 
-    # 4) average both to hourly
-    act_hour  = avg_hourly(actual_df, "long_flux", "goes_class")
-    pred_hour = avg_hourly(pred_df, "long_flux_pred", "goes_class_pred")
+    # Hourly means (for the strip)
+    act_hour  = _avg_hourly(actual_df, "long_flux", "goes_class")
+    pred_hour = _avg_hourly(pred_df,   "long_flux_pred", "goes_class_pred")
+
+    # Convert timestamps to ISO UTC strings with 'Z' so the frontend never shifts them
+    def _iso(df, col="timestamp"):
+        df = df.copy()
+        df[col] = pd.to_datetime(df[col], utc=True).dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+        return df
 
     return {
         "date": date_iso,
         "hourly_actual": act_hour.to_dict(orient="records"),
-        "hourly_pred":   pred_hour.to_dict(orient="records")
+        "hourly_pred":   pred_hour.to_dict(orient="records"),
+        "minute_actual": _iso(actual_df)[["timestamp", "long_flux"]].to_dict(orient="records"),
+        "minute_pred":   _iso(pred_df)[["timestamp", "long_flux_pred"]].to_dict(orient="records"),
     }
