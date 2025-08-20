@@ -2,10 +2,12 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta, timezone
+
 import pandas as pd
 
-from collect.fetch import fetch_range_minute, fetch_day_minute  # <= see step 2
-from model.predict_pytorch import predict_from_seed_df, WINDOW  # or sklearn if you're using that
+from collect.fetch import fetch_range_minute, fetch_day_minute 
+from collect.sdo import build_sdo_payload
+from model.predict_pytorch import predict_from_seed_df, WINDOW
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"])
@@ -72,3 +74,35 @@ def forecast(date_iso: str):
         "minute_actual": _iso(actual_df)[["timestamp", "long_flux"]].to_dict(orient="records"),
         "minute_pred":   _iso(pred_df)[["timestamp", "long_flux_pred"]].to_dict(orient="records"),
     }
+
+
+@app.get("/sdo/{date_iso}")
+def sdo(date_iso: str):
+    """
+    Daily SDO AIA-171 movie + auto summary + optional bright-region hints.
+    If movie for requested day isn't published yet, it falls back to yesterday.
+    """
+    # Reuse what we already compute so the summary can mention peaks/trend.
+    day_start, day_end = _utc_day_window(date_iso)
+
+    # Try to reuse actual & predicted minute series; if they fail, still return movie.
+    try:
+        seed_start = day_start - timedelta(minutes=WINDOW)
+        seed_end   = day_start - timedelta(minutes=1)
+        seed_df    = fetch_range_minute(seed_start, seed_end)
+        pred_df    = predict_from_seed_df(seed_df)
+        pred_df    = pred_df[(pred_df["timestamp"] >= day_start) & (pred_df["timestamp"] <= day_end)]
+    except Exception:
+        pred_df = pd.DataFrame(columns=["timestamp","long_flux_pred"])
+
+    try:
+        actual_df  = fetch_range_minute(day_start, day_end)
+    except Exception:
+        actual_df = pd.DataFrame(columns=["timestamp","long_flux"])
+
+    payload = build_sdo_payload(
+        date_iso,
+        minute_pred=pred_df if not pred_df.empty else None,
+        minute_act=actual_df if not actual_df.empty else None,
+    )
+    return payload
